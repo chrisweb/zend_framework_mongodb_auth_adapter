@@ -28,6 +28,7 @@ class Chris_Auth_Adapter_MongoDB implements Zend_Auth_Adapter_Interface
 	protected $_identity = null;
 	protected $_credential = null;
 	protected $_authenticateResultInfo = null;
+	protected $_result;
 
     public function __construct(MongoCollection $collection = null, $identityKey = null,
                                 $credentialKey = null, $salt = null)
@@ -108,6 +109,47 @@ class Chris_Auth_Adapter_MongoDB implements Zend_Auth_Adapter_Interface
         return $this;
 		
     }
+	
+    public function getResultObject($returnKeys = null, $omitKeys = null)
+    {
+	
+        if (!$this->_result) {
+            return false;
+        }
+		
+        $returnObject = new stdClass();
+
+        if ($returnKeys !== null) {
+
+            $availableKeys = array_keys($this->_result);
+			
+            foreach ( (array) $returnKeys as $returnKey) {
+                if (in_array($returnKey, $availableKeys)) {
+                    $returnObject->{$returnKey} = $this->_result[$returnKey];
+                }
+            }
+            return $returnObject;
+
+        } elseif ($omitKeys !== null) {
+
+            $omitKeys = (array) $omitKeys;
+            foreach ($this->_result as $resultKey => $resultValue) {
+                if (!in_array($resultKey, $omitKeys)) {
+                    $returnObject->{$resultKey} = $resultValue;
+                }
+            }
+            return $returnObject;
+
+        } else {
+
+            foreach ($this->_result as $resultKey => $resultValue) {
+                $returnObject->{$resultKey} = $resultValue;
+            }
+            return $returnObject;
+
+        }
+	
+	}
 
     /**
      * authenticate() - defined by Zend_Auth_Adapter_Interface.  This method is called to
@@ -146,7 +188,7 @@ class Chris_Auth_Adapter_MongoDB implements Zend_Auth_Adapter_Interface
 			//Zend_Debug::dump($resultIdentity);
 		
 			if ($user[$this->_credentialKey] !== md5($this->_credential.$this->_salt)) {
-			
+
 				$this->_authenticateResultInfo['code'] = Zend_Auth_Result::FAILURE_CREDENTIAL_INVALID;
 				$this->_authenticateResultInfo['messages'][] = 'Supplied credential is invalid.';
 				return $this->_authenticateCreateAuthResult();
@@ -154,6 +196,8 @@ class Chris_Auth_Adapter_MongoDB implements Zend_Auth_Adapter_Interface
 			}
 			
 		}
+		
+		$this->_result = $user;
 
 		$this->_authenticateResultInfo['code'] = Zend_Auth_Result::SUCCESS;
         $this->_authenticateResultInfo['messages'][] = 'Authentication successful.';
